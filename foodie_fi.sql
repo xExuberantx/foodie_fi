@@ -58,23 +58,74 @@ SELECT
     ROUND((SELECT COUNT(customer_id) FROM foodie_fi.subscriptions WHERE plan_id = 4)*100.0/COUNT(DISTINCT customer_id), 1) as churn_perc
 FROM foodie_fi.subscriptions
 JOIN foodie_fi.plans
-USING(plan_id)
+USING(plan_id);
 
 -- 5. How many customers have churned straight after their initial free trial - what percentage is this rounded to the nearest whole number?
-SELECT *
-FROM foodie_fi.subscriptions
-JOIN foodie_fi.plans
-USING(plan_id)
-ORDER BY customer_id
---WHERE plan_id IN (0, 4)
+WITH cte as (
+    SELECT
+        *,
+        LEAD(plan_id) OVER (PARTITION BY customer_id ORDER BY plan_id ASC) as next_plan
+    FROM foodie_fi.subscriptions
+    )
+
+SELECT
+    COUNT(*) as churn_cnt,
+    ROUND(COUNT(*)*100.0/1000) as churn_perc
+FROM cte
+WHERE plan_id = 0 AND next_plan = 4;
 
 -- 6. What is the number and percentage of customer plans after their initial free trial?
+WITH cte as (
+    SELECT
+        *,
+        LEAD(plan_id) OVER (PARTITION BY customer_id ORDER BY plan_id ASC) as next_plan
+    FROM foodie_fi.subscriptions
+    )
+
+SELECT
+    next_plan,
+    plan_name,
+    count,
+    perc
+FROM (
+    SELECT
+        next_plan,
+        COUNT(*),
+        ROUND(COUNT(*)*100.0/1000,2) as perc
+    FROM cte
+    WHERE plan_id = 0 AND next_plan IS NOT NULL
+    GROUP BY next_plan
+    ORDER BY next_plan) as t
+JOIN foodie_fi.plans p
+ON t.next_plan=p.plan_id;
 
 -- 7. What is the customer count and percentage breakdown of all 5 plan_name values at 2020-12-31?
+WITH cte as (
+    SELECT
+        customer_id,
+        MAX(plan_id) as current_plan
+    FROM foodie_fi.subscriptions
+    WHERE start_date <= '2020-12-31'
+    GROUP BY customer_id
+)
+
+SELECT
+    plan_name,
+    COUNT(*),
+    ROUND(COUNT(*)*100.0/(SELECT COUNT(*) FROM cte), 2) as perc
+FROM cte 
+JOIN foodie_fi.plans p
+ON cte.current_plan=p.plan_id
+GROUP BY plan_name
+ORDER BY count;
 
 -- 8. How many customers have upgraded to an annual plan in 2020?
+SELECT COUNT(*)
+FROM foodie_fi.subscriptions
+WHERE start_date BETWEEN '2020-01-01' AND '2020-12-31' AND plan_id = 3;
 
 -- 9. How many days on average does it take for a customer to an annual plan from the day they join Foodie-Fi?
+
 
 -- 10. Can you further breakdown this average value into 30 day periods (i.e. 0-30 days, 31-60 days etc)
 
