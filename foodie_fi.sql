@@ -2883,3 +2883,40 @@ SELECT COUNT(DISTINCT customer_id) as downgrade_cnt
 FROM cte
 WHERE start_date BETWEEN '2020-01-01' AND '2020-12-31'
     AND plan_id = 2 AND next_plan = 1;
+
+-- C. Challenge Payment Question
+/* 
+The Foodie-Fi team wants you to create a new payments table for the year 2020 that includes amounts paid by each customer in the
+subscriptions table with the following requirements:
+- monthly payments always occur on the same day of month as the original start_date of any monthly paid plan
+- upgrades from basic to monthly or pro plans are reduced by the current paid amount in that month and start immediately
+- upgrades from pro monthly to pro annual are paid at the end of the current billing period and also starts at the end of the month period
+- once a customer churns they will no longer make payments
+*/
+
+-- CREATE TABLE IF NOT EXISTS foodie_fi.foodie_fi.payments as 
+WITH post_trial as (
+    SELECT *
+    FROM foodie_fi.subscriptions
+    JOIN foodie_fi.plans
+    USING(plan_id)
+    WHERE plan_id <> 0 AND start_date BETWEEN '2020-01-01' AND '2020-12-31'
+    ORDER BY customer_id
+    )
+
+SELECT *
+FROM post_trial
+WHERE customer_id = 170
+
+
+-- D. Outside The Box Questions
+
+-- 1. How would you calculate the rate of growth for Foodie-Fi?
+
+-- 2. What key metrics would you recommend Foodie-Fi management to track over time to assess performance of their overall business? 
+
+-- 3. What are some key customer journeys or experiences that you would analyse further to improve customer retention?
+
+-- 4. If the Foodie-Fi team were to create an exit survey shown to customers who wish to cancel their subscription, what questions would you include in the survey? 
+
+-- 5. What business levers could the Foodie-Fi team use to reduce the customer churn rate? How would you validate the effectiveness of your ideas? 
