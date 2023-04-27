@@ -125,8 +125,80 @@ FROM foodie_fi.subscriptions
 WHERE start_date BETWEEN '2020-01-01' AND '2020-12-31' AND plan_id = 3;
 
 -- 9. How many days on average does it take for a customer to an annual plan from the day they join Foodie-Fi?
+WITH annual as (
+    SELECT
+        customer_id,
+        start_date as start_annual
+    FROM foodie_fi.subscriptions
+    WHERE plan_id = 3
+    ),
+    start as (
+    SELECT
+        customer_id,
+        start_date as join_date
+    FROM foodie_fi.subscriptions
+    WHERE plan_id = 0
+    )
 
+SELECT
+    ROUND(AVG(start_annual-join_date)) as avg_to_annual
+FROM start s
+JOIN annual a
+USING(customer_id);
 
 -- 10. Can you further breakdown this average value into 30 day periods (i.e. 0-30 days, 31-60 days etc)
+WITH annual as (
+    SELECT
+        customer_id,
+        start_date as start_annual
+    FROM foodie_fi.subscriptions
+    WHERE plan_id = 3
+    ),
+    start as (
+    SELECT
+        customer_id,
+        start_date as join_date
+    FROM foodie_fi.subscriptions
+    WHERE plan_id = 0
+    ),
+    days_to_annual as (
+    SELECT
+        start_annual-join_date as days
+    FROM start s
+    JOIN annual a
+    USING(customer_id)
+    )
+
+-- Establishing min and max values for bins (7-346)
+SELECT
+    MIN(start_annual-join_date),
+    MAX(start_annual-join_date)
+FROM start s
+JOIN annual a
+USING(customer_id);
+
+SELECT
+    lower,
+    upper,
+    COUNT(*)
+FROM
+    (SELECT
+        generate_series(1, 340, 30) as lower,
+        generate_series(30, 360, 30) as upper) as bins
+LEFT JOIN days_to_annual as d
+ON d.days >= bins.lower AND d.days <= bins.upper
+GROUP BY lower, upper
+ORDER BY lower, upper;
 
 -- 11. How many customers downgraded from a pro monthly to a basic monthly plan in 2020?
+WITH cte as (
+    SELECT
+        *,
+        LEAD(plan_id) OVER (PARTITION BY customer_id ORDER BY plan_id ASC) as next_plan
+    FROM foodie_fi.subscriptions
+    )
+
+SELECT COUNT(DISTINCT customer_id) as downgrade_cnt
+FROM cte
+WHERE start_date BETWEEN '2020-01-01' AND '2020-12-31'
+    AND plan_id = 2 AND next_plan = 1;
