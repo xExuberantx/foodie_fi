@@ -2903,11 +2903,40 @@ WITH post_trial as (
     WHERE plan_id <> 0 AND start_date BETWEEN '2020-01-01' AND '2020-12-31'
     ORDER BY customer_id
     )
-
-SELECT *
-FROM post_trial
-WHERE customer_id = 170
-
+-- Example of steps for customer 170 (tbc how to do this automatically on a larger scale)
+SELECT *,
+    ROW_NUMBER() OVER(ORDER BY payment_date)
+FROM 
+    (SELECT
+        170 as customer_id,
+        1 as plan_id,
+        'basic_monthly' as plan_name,
+        generate_series(
+            (SELECT start_date FROM post_trial WHERE customer_id = 170 AND plan_id = 1),
+            (SELECT start_date FROM post_trial WHERE customer_id = 170 AND plan_id = 2),
+            INTERVAL '1 month') as payment_date,
+        9.90 as amount
+    UNION
+    SELECT
+        170 as customer_id,
+        2 as plan_id,
+        'pro monthly' as plan_name,
+        generate_series(
+            (SELECT start_date FROM post_trial WHERE customer_id = 170 AND plan_id = 2),
+            (SELECT start_date FROM post_trial WHERE customer_id = 170 AND plan_id = 3),
+            INTERVAL '1 month'),
+        19.90 as amount
+    UNION
+    SELECT
+        170 as customer_id,
+        3 as plan_id,
+        'pro annualy' as plan_name,
+        generate_series(
+            (SELECT start_date FROM post_trial WHERE customer_id = 170 AND plan_id = 3),
+            '2020-12-31',
+            INTERVAL '1 year'),
+        199.90 as amount
+    ORDER BY payment_date) as cust_170
 
 -- D. Outside The Box Questions
 
